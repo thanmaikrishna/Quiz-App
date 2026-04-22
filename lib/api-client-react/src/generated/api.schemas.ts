@@ -8,3 +8,61 @@
 export interface HealthStatus {
   status: string;
 }
+
+export type GenerateQuestionsBodyCategory =
+  (typeof GenerateQuestionsBodyCategory)[keyof typeof GenerateQuestionsBodyCategory];
+
+export const GenerateQuestionsBodyCategory = {
+  web: "web",
+  math: "math",
+  general: "general",
+} as const;
+
+export type GenerateQuestionsBodyDifficulty =
+  (typeof GenerateQuestionsBodyDifficulty)[keyof typeof GenerateQuestionsBodyDifficulty];
+
+export const GenerateQuestionsBodyDifficulty = {
+  easy: "easy",
+  medium: "medium",
+  hard: "hard",
+} as const;
+
+export interface GenerateQuestionsBody {
+  category: GenerateQuestionsBodyCategory;
+  difficulty: GenerateQuestionsBodyDifficulty;
+  /**
+   * @minimum 1
+   * @maximum 20
+   */
+  count?: number;
+}
+
+export interface GeneratedQuestion {
+  id: string;
+  question: string;
+  correctAnswer: string;
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  incorrectAnswers: string[];
+  category: string;
+  difficulty: string;
+}
+
+export type GeneratedQuestionsResponseSource =
+  (typeof GeneratedQuestionsResponseSource)[keyof typeof GeneratedQuestionsResponseSource];
+
+export const GeneratedQuestionsResponseSource = {
+  ai: "ai",
+  fallback: "fallback",
+} as const;
+
+export interface GeneratedQuestionsResponse {
+  questions: GeneratedQuestion[];
+  source: GeneratedQuestionsResponseSource;
+}
+
+export interface ErrorResponse {
+  error: string;
+}

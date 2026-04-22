@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, WifiOff } from 'lucide-react';
 import WelcomeScreen from './components/quiz/WelcomeScreen';
 import SetupScreen from './components/quiz/SetupScreen';
 import QuizScreen from './components/quiz/QuizScreen';
 import ResultsScreen from './components/quiz/ResultsScreen';
-import { Category, Difficulty, Question, questions } from './data/questions';
+import LoadingScreen from './components/quiz/LoadingScreen';
+import { Category, Difficulty, Question, questions as localQuestions } from './data/questions';
 import { useHighScores } from './hooks/useHighScores';
 import { useDarkMode } from './hooks/useDarkMode';
+import { fetchAiQuestions } from './lib/questionsApi';
 
-export type AppState = 'welcome' | 'setup' | 'quiz' | 'results';
+export type AppState = 'welcome' | 'setup' | 'loading' | 'quiz' | 'results';
 
 export interface AnswerRecord {
   question: string;
@@ -27,6 +29,13 @@ function shuffleArray<T>(array: T[]): T[] {
   return newArray;
 }
 
+function prepareQuestions(raw: Question[]): (Question & { options: string[] })[] {
+  return raw.map(q => ({
+    ...q,
+    options: shuffleArray([q.correctAnswer, ...q.incorrectAnswers]),
+  }));
+}
+
 export default function App() {
   const [appState, setAppState] = useState<AppState>('welcome');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -35,27 +44,40 @@ export default function App() {
   const [score, setScore] = useState(0);
   const [answerHistory, setAnswerHistory] = useState<AnswerRecord[]>([]);
   const [isNewBest, setIsNewBest] = useState(false);
+  const [usedFallback, setUsedFallback] = useState(false);
 
   const { getHighScore, saveHighScore } = useHighScores();
   const { isDark, toggle: toggleDark } = useDarkMode();
 
   const handleStartSetup = () => setAppState('setup');
 
-  const handleBeginQuiz = (category: Category, difficulty: Difficulty) => {
+  const handleBeginQuiz = async (category: Category, difficulty: Difficulty) => {
     setSelectedCategory(category);
     setSelectedDifficulty(difficulty);
-
-    const filtered = questions.filter(q => q.category === category && q.difficulty === difficulty);
-    const shuffled = shuffleArray(filtered).slice(0, 10);
-    const prepared = shuffled.map(q => ({
-      ...q,
-      options: shuffleArray([q.correctAnswer, ...q.incorrectAnswers]),
-    }));
-
-    setActiveQuestions(prepared);
     setScore(0);
     setAnswerHistory([]);
     setIsNewBest(false);
+    setUsedFallback(false);
+    setAppState('loading');
+
+    let prepared: (Question & { options: string[] })[] = [];
+    let fell = false;
+
+    try {
+      const { questions: aiQuestions } = await fetchAiQuestions(category, difficulty, 10);
+      prepared = prepareQuestions(aiQuestions);
+    } catch {
+      // Fallback to local questions
+      fell = true;
+      const filtered = localQuestions.filter(
+        q => q.category === category && q.difficulty === difficulty
+      );
+      const shuffled = shuffleArray(filtered).slice(0, 10);
+      prepared = prepareQuestions(shuffled);
+    }
+
+    setUsedFallback(fell);
+    setActiveQuestions(prepared);
     setAppState('quiz');
   };
 
@@ -94,12 +116,34 @@ export default function App() {
         {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
       </button>
 
+      {/* Fallback notice */}
+      <AnimatePresence>
+        {usedFallback && appState === 'quiz' && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute top-4 left-4 right-16 flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-700 dark:text-yellow-400 text-xs px-3 py-2 rounded-lg z-40"
+          >
+            <WifiOff className="w-3.5 h-3.5 shrink-0" />
+            <span>Using local questions — AI unavailable</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="wait">
         {appState === 'welcome' && (
           <WelcomeScreen key="welcome" onStart={handleStartSetup} />
         )}
         {appState === 'setup' && (
           <SetupScreen key="setup" onBegin={handleBeginQuiz} getHighScore={getHighScore} />
+        )}
+        {appState === 'loading' && selectedCategory && selectedDifficulty && (
+          <LoadingScreen
+            key="loading"
+            category={selectedCategory}
+            difficulty={selectedDifficulty}
+          />
         )}
         {appState === 'quiz' && (
           <QuizScreen

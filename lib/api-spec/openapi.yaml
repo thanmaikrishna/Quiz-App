@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: quiz
+    description: Quiz question generation
 paths:
   /healthz:
     get:
@@ -24,6 +26,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /quiz/questions:
+    post:
+      operationId: generateQuizQuestions
+      tags: [quiz]
+      summary: Generate quiz questions via AI
+      description: Uses AI to generate unique quiz questions for a given category and difficulty
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateQuestionsBody"
+      responses:
+        "200":
+          description: Generated questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedQuestionsResponse"
+        "500":
+          description: Generation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +60,66 @@ components:
           type: string
       required:
         - status
-
+    GenerateQuestionsBody:
+      type: object
+      properties:
+        category:
+          type: string
+          enum: [web, math, general]
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        count:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 10
+      required:
+        - category
+        - difficulty
+    GeneratedQuestion:
+      type: object
+      properties:
+        id:
+          type: string
+        question:
+          type: string
+        correctAnswer:
+          type: string
+        incorrectAnswers:
+          type: array
+          items:
+            type: string
+          minItems: 3
+          maxItems: 3
+        category:
+          type: string
+        difficulty:
+          type: string
+      required:
+        - id
+        - question
+        - correctAnswer
+        - incorrectAnswers
+        - category
+        - difficulty
+    GeneratedQuestionsResponse:
+      type: object
+      properties:
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneratedQuestion"
+        source:
+          type: string
+          enum: [ai, fallback]
+      required:
+        - questions
+        - source
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

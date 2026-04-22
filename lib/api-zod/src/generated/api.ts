@@ -14,3 +14,40 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Uses AI to generate unique quiz questions for a given category and difficulty
+ * @summary Generate quiz questions via AI
+ */
+export const generateQuizQuestionsBodyCountDefault = 10;
+export const generateQuizQuestionsBodyCountMax = 20;
+
+export const GenerateQuizQuestionsBody = zod.object({
+  category: zod.enum(["web", "math", "general"]),
+  difficulty: zod.enum(["easy", "medium", "hard"]),
+  count: zod
+    .number()
+    .min(1)
+    .max(generateQuizQuestionsBodyCountMax)
+    .default(generateQuizQuestionsBodyCountDefault),
+});
+
+export const generateQuizQuestionsResponseQuestionsItemIncorrectAnswersMin = 3;
+export const generateQuizQuestionsResponseQuestionsItemIncorrectAnswersMax = 3;
+
+export const GenerateQuizQuestionsResponse = zod.object({
+  questions: zod.array(
+    zod.object({
+      id: zod.string(),
+      question: zod.string(),
+      correctAnswer: zod.string(),
+      incorrectAnswers: zod
+        .array(zod.string())
+        .min(generateQuizQuestionsResponseQuestionsItemIncorrectAnswersMin)
+        .max(generateQuizQuestionsResponseQuestionsItemIncorrectAnswersMax),
+      category: zod.string(),
+      difficulty: zod.string(),
+    }),
+  ),
+  source: zod.enum(["ai", "fallback"]),
+});
