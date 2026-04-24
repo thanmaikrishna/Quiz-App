@@ -274,7 +274,7 @@ export default function QuizScreen({ questions, onComplete }: QuizScreenProps) {
                     <span className="shrink-0 w-7 h-7 rounded-full bg-muted/60 flex items-center justify-center text-xs font-bold">
                       {idx + 1}
                     </span>
-                    <span className="text-base truncate">{option}</span>
+                    <span className="text-base break-words">{option}</span>
                   </div>
                   {IconEl}
                 </motion.button>
